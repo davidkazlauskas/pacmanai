@@ -8,6 +8,8 @@
 (def WEIGHT-GHOST-COUNT (atom -1))
 (def WEIGHT-BEAN-COUNT (atom 1))
 
+(def WEIGHT-POS-VISITED (atom -5))
+
 (def sample-map
   (str
     "wwwwwwwwwwwwwwwwwww"
@@ -204,6 +206,19 @@
        (bool-func original pac-pos [0 1])))
      ]))
 
+(defn round-and-weight-function-gradient [original weight grad-func]
+  (let [pac-pos (first (pacman-pos original))]
+    [
+     (* weight
+      (grad-func original pac-pos [-1 0]))
+     (* weight
+      (grad-func original pac-pos [0 -1]))
+     (* weight
+      (grad-func original pac-pos [1 0]))
+     (* weight
+      (grad-func original pac-pos [0 1]))
+     ]))
+
 ; score when ghost is immediately to pacman
 (defn score-immediate-danger [original]
   (round-and-weight-functions
@@ -247,8 +262,15 @@
 (defn print-positional [pref [l t r b]]
   (println pref "left:" l "top:" t "right:" r "bot:" b))
 
+(defn score-prev-pos-existance [original pos-stack]
+  (round-and-weight-function-gradient
+    original @WEIGHT-POS-VISITED
+    (fn [_ [cx cy] [dx dy]]
+      (let [to-visit [(+ cx dx) (+ cy dy)]]
+        (count (filter #(= % to-visit) pos-stack))))))
+
 ; TODO: add creep data
-(defn score-turn-for-pacman [original]
+(defn score-turn-for-pacman [original pacman-prev-positions]
   (let [[danger-left danger-top danger-right danger-bot :as dvec]
         (score-immediate-danger original)
         imbean (score-immediate-bean original)
@@ -258,13 +280,15 @@
         (score-ghost-teritories original)
         [beans-left beans-top beans-right beans-bot :as bvec]
         (score-bean-teritories original)
-        final-vec (apply mapv + [dvec imbean wvec gvec bvec])
+        prev-pos (score-prev-pos-existance original pacman-prev-positions)
+        final-vec (apply mapv + [dvec imbean wvec gvec bvec prev-pos])
         ]
     (print-positional "GHOST NEXT:" dvec)
     (print-positional "WALL NEXT:" wvec)
     (print-positional "BEAN NEXT:" imbean)
     (print-positional "GHOST TERRITORY:" gvec)
     (print-positional "BEAN TERRITORY:" bvec)
+    (print-positional "PREV POS SCORE:" prev-pos)
     (print-positional "FINAL SCORE: " final-vec)
     final-vec
     ))
@@ -370,7 +394,7 @@
     (let [[tecy tecx] (:tecman-position api-map)
           conv-map (turn-api-coords-to-accepted (:map api-map))
           [left top bot right]
-          (score-turn-for-pacman conv-map)
+          (score-turn-for-pacman conv-map [])
           svec [
            {:dir :left :score left}
            {:dir :top :score top}
