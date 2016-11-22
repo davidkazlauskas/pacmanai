@@ -37,8 +37,8 @@
 (defn set-cell-for-type [el-type x y]
   (set! (.-className (.getElementById js/document (cell-id x y))) (css-class-for-type el-type)))
 
-(defonce map-repr (atom {:width 19 :repr a/sample-map}))
-(defonce move-stack (atom []))
+(def map-repr (atom {:width 19 :repr a/sample-map}))
+(def move-stack (atom []))
 
 (defn render-pacman-table [the-str width]
   (let [dat (a/str-map-2-data the-str width)]
@@ -68,22 +68,18 @@
         the-data (a/str-map-2-data (:repr curr) (:width curr))
         my-pos (a/pacman-pos the-data)
         scores (a/score-turn-for-pacman the-data)
-        best-score-pos (first (apply max-key second (map-indexed vector scores)))]
+        best-score-pos (first (apply max-key second (map-indexed vector scores)))
+        [bx by] (nth [[-1 0] [0 -1] [1 0] [0 1]] best-score-pos)]
     (swap! move-stack conj curr)
     (reset! map-repr
-      {:repr
-       (case best-score-pos
-        0 (a/map-after-pacman-move the-data -1 0)
-        1 (a/map-after-pacman-move the-data 0 -1)
-        2 (a/map-after-pacman-move the-data 1 0)
-        3 (a/map-after-pacman-move the-data 0 1))
-       :width curr})
+      (a/map-2-str (a/map-after-pacman-move the-data bx by)))
+    (println "chosen move:" [bx by])
     (render-map-repr)))
 
 (defn pop-pacman-turn []
   (let [head (last @move-stack)]
     (swap! move-stack pop)
-    (reset! map-repr)
+    (reset! map-repr head)
     (render-map-repr)))
 
 (defn on-js-reload []

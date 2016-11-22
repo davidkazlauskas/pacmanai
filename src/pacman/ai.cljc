@@ -134,13 +134,15 @@
 ; Y X playerio pozicija
 
 ; TODO: kaip skaiciuoti beans?
+;(defn bean-score [original divisor]
+  ;(bigdec
+   ;(/
+    ;(Math/round
+      ;(* 1000 (/ (float (count (bean-pos original)))
+        ;divisor)))
+    ;1000)))
 (defn bean-score [original divisor]
-  (bigdec
-   (/
-    (Math/round
-      (* 1000 (/ (float (count (bean-pos original)))
-        divisor)))
-    1000)))
+  (/ (float (count (bean-pos original))) divisor))
 
 (defn elem-or-nil [original x y]
   (if-let [yel (get original y)]
