@@ -340,6 +340,27 @@
         [yn xn])
       next-turn)))
 
+(defn node-to-char [the-node]
+  (case (:type the-node)
+    :wall "w"
+    :pacman "p"
+    :ghost "g"
+    :bean "."
+    :space " "))
+
+(defn map-2-str [the-map]
+  {:width (count (first the-map))
+   :repr (apply str
+            (map #(apply str (map node-to-char %))
+              the-map))})
+
+(defn map-after-pacman-move [the-data x-move y-move]
+  (let [[px py] (first (pacman-pos the-data))]
+    (-> the-data
+      (assoc-in [py px] {:type :space})
+      (assoc-in [(+ py y-move)
+                 (+ px x-move)] {:type :pacman}))))
+
 (defn external-advice-turn [api-map]
   (println api-map)
   (case (:mode api-map)
