@@ -82,7 +82,7 @@
     (reset! map-repr
       (assoc
         (a/map-2-str (a/map-after-pacman-move the-data bx by))
-        :prevstack (conj-trim prev-stack my-pos 8)))
+        :prevstack (conj-trim prev-stack my-pos 16))) ; 8 for second iteration
     (println "chosen move:" [bx by])
     (render-map-repr)))
 
