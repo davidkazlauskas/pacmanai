@@ -10,6 +10,9 @@
 
 (def WEIGHT-POS-VISITED (atom -5))
 
+(def WALK-GHOST-SCORE (atom -25))
+(def WALK-BEAN-SCORE (atom 15))
+
 (def sample-map
   (str
     "wwwwwwwwwwwwwwwwwww"
@@ -259,6 +262,103 @@
       (let [to-visit [(+ cx dx) (+ cy dy)]]
         (count (filter #(= % to-visit) pos-stack))))))
 
+(defn try-advance [original used-set
+                   path-valid [x y] iter limit]
+  (if (< iter limit)
+    (let [all (surround-coords x y)
+          filtered
+          (filterv some?
+            (map (fn [[cx cy]]
+                   (if-let [el (elem-or-nil original cx cy)]
+                     (if (and (path-valid el)
+                              (not (used-set [cx cy])))
+                             {:coords [cx cy]})))
+                 all))
+          new-set (into used-set (map :coords filtered))]
+      {:coords [x y]
+       :leaves (mapv
+                 #(try-advance original new-set
+                               path-valid
+                               (:coords %)
+                               (inc iter) limit)
+                 filtered)})
+   {:coords [x y]
+    :leaves []}))
+
+(defn try-advance-root [original path-valid
+                        coords limit]
+  (try-advance original #{coords} path-valid
+               coords 0 limit))
+
+(defn score-walk-tree [original
+                       walk-tree
+                       current-res
+                       current-iter
+                       scoring-function]
+  (let [[x y] (:coords walk-tree)]
+   (if-let [elem (elem-or-nil original x y)]
+          (let [[curr-score keep-going]
+                (scoring-function current-iter elem)]
+           (+ current-res
+              curr-score
+              (if keep-going
+                (reduce +
+                      (map
+                        #(score-walk-tree
+                           original
+                           % 0 (inc current-iter)
+                           scoring-function)
+                        (:leaves walk-tree)))
+                0)))
+           current-res)))
+
+(defn score-walk-tree-root [original walk-tree scoring-function]
+  (score-walk-tree original walk-tree 0 0 scoring-function))
+
+(defn coords-2-vector-pos [[x1 y1] [x2 y2]]
+  (case [(- x2 x1) (- y2 y1)]
+    [-1 0] 0 ; left
+    [0 -1] 1 ; top
+    [1 0] 2 ; right
+    [0 1] 3 ; bottom
+    ))
+
+(defn score-four-directions-walk-tree
+  [original walk-tree scoring-function]
+  (let [orig-coords (:coords walk-tree)
+        leaves-with-pos (map
+                          #(vector
+                             (coords-2-vector-pos
+                               orig-coords
+                               (:coords %))
+                             %)
+                          (:leaves walk-tree))
+        prelim [0 0 0 0]]
+    (loop [all leaves-with-pos our-vec prelim]
+      (if (seq all)
+        (let [[pos tree] (first all)
+              cont (next all)]
+          (recur
+            cont
+            (assoc our-vec
+                   pos
+                   (score-walk-tree-root
+                     original tree scoring-function))))
+        our-vec))))
+
+(defn not-wall [node]
+  (not= (:type node) :wall))
+
+(defn walking-tree-scoring [distance the-node]
+  (let [the-type (:type the-node)
+        dist-norm (/ 1 distance)]
+    (cond
+      (= the-type :ghost)
+      [(* @WALK-GHOST-SCORE dist-norm) false]
+      (= the-type :bean)
+      [(* @WALK-BEAN-SCORE dist-norm) true]
+      :else [0 true])))
+
 ; TODO: add creep data
 (defn score-turn-for-pacman [original pacman-prev-positions]
   (let [[danger-left danger-top danger-right danger-bot :as dvec]
@@ -271,7 +371,13 @@
         [beans-left beans-top beans-right beans-bot :as bvec]
         (score-bean-teritories original)
         prev-pos (score-prev-pos-existance original pacman-prev-positions)
-        final-vec (apply mapv + [dvec imbean wvec gvec bvec prev-pos])
+        walk-tree (try-advance-root original not-wall
+                                    (last pacman-prev-positions)
+                                    16)
+        walk-scoring (score-four-directions-walk-tree
+                       original walk-tree walking-tree-scoring)
+        final-vec (apply mapv + [dvec imbean wvec gvec
+                                 bvec prev-pos walk-scoring])
         ]
     (print-positional "GHOST NEXT:" dvec)
     (print-positional "WALL NEXT:" wvec)
@@ -279,6 +385,7 @@
     (print-positional "GHOST TERRITORY:" gvec)
     (print-positional "BEAN TERRITORY:" bvec)
     (print-positional "PREV POS SCORE:" prev-pos)
+    (print-positional "WALK SCORE:" walk-scoring)
     (print-positional "FINAL SCORE: " final-vec)
     final-vec
     ))
@@ -369,100 +476,6 @@
    :repr (apply str
             (map #(apply str (map node-to-char %))
               the-map))})
-
-(defn list-has-not [the-list elem]
-  (empty? (filter #(= % the-list) the-list)))
-
-(comment
-  {:coords [x y]
-   :leaves []
-   }
-  "the struct"
-{:limit 16
- :chains []
- }
-  
-  )
-
-(defn try-advance [original used-set
-                   path-valid [x y] iter limit]
-  (if (< iter limit)
-    (let [all (surround-coords x y)
-          filtered
-          (filterv some?
-            (map (fn [[cx cy]]
-                   (if-let [el (elem-or-nil original cx cy)]
-                     (if (and (path-valid el)
-                              (not (used-set [cx cy])))
-                             {:coords [cx cy]})))
-                 all))
-          new-set (into used-set (map :coords filtered))]
-      {:coords [x y]
-       :leaves (mapv
-                 #(try-advance original new-set
-                               path-valid
-                               (:coords %)
-                               (inc iter) limit)
-                 filtered)})
-   {:coords [x y]
-    :leaves []}))
-
-(defn try-advance-root [original path-valid
-                        coords limit]
-  (try-advance original #{coords} path-valid
-               coords 0 limit))
-
-(defn score-walk-tree [original
-                       walk-tree
-                       current-res
-                       current-iter
-                       scoring-function]
-  (let [[x y] (:coords walk-tree)]
-   (if-let [elem (elem-or-nil original x y)]
-           (+ current-res
-              (scoring-function current-iter elem)
-              (reduce +
-                      (map
-                        #(score-walk-tree
-                           original
-                           % 0 (inc current-iter)
-                           scoring-function)
-                        (:leaves walk-tree))))
-           current-res)))
-
-(defn score-walk-tree-root [original walk-tree scoring-function]
-  (score-walk-tree original walk-tree 0 0 scoring-function))
-
-(defn coords-2-vector-pos [[x1 y1] [x2 y2]]
-  (case [(- x2 x1) (- y2 y1)]
-    [-1 0] 0 ; left
-    [0 -1] 1 ; top
-    [1 0] 2 ; right
-    [0 1] 3 ; bottom
-    ))
-
-(defn score-four-directions-walk-tree
-  [original walk-tree scoring-function]
-  (let [orig-coords (:coords walk-tree)
-        leaves-with-pos (map
-                          #(vector
-                             (coords-2-vector-pos
-                               orig-coords
-                               (:coords %))
-                             %)
-                          (:leaves walk-tree))
-        prelim [0 0 0 0]]
-    (loop [all leaves-with-pos our-vec prelim]
-      (if (seq all)
-        (let [[pos tree] (first all)
-              cont (next all)]
-          (recur
-            cont
-            (assoc our-vec
-                   pos
-                   (score-walk-tree-root
-                     original tree scoring-function))))
-        our-vec))))
 
 (defn map-after-pacman-move [the-data x-move y-move]
   (let [[px py] (first (pacman-pos the-data))]
