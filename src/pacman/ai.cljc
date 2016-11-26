@@ -368,23 +368,32 @@
       [(* @WALK-BEAN-SCORE dist-norm) true]
       :else [0 true])))
 
+(defn surround-map-sides-with-walls [original]
+  (mapv
+    (fn [row]
+        (-> row
+          (assoc 0 {:type :wall})
+          (assoc (dec (count row)) {:type :wall})))
+    original))
+
 ; TODO: add creep data
 (defn score-turn-for-pacman [original pacman-prev-positions]
-  (let [[danger-left danger-top danger-right danger-bot :as dvec]
-        (score-immediate-danger original)
-        imbean (score-immediate-bean original)
+  (let [surrounded (surround-map-sides-with-walls original)
+        [danger-left danger-top danger-right danger-bot :as dvec]
+        (score-immediate-danger surrounded)
+        imbean (score-immediate-bean surrounded)
         [wall-left wall-top wall-right wall-bot :as wvec]
-        (score-wall original)
+        (score-wall surrounded)
         [ghosts-left ghosts-top ghosts-right ghosts-bot :as gvec]
-        (score-ghost-teritories original)
+        (score-ghost-teritories surrounded)
         [beans-left beans-top beans-right beans-bot :as bvec]
-        (score-bean-teritories original)
-        prev-pos (score-prev-pos-existance original pacman-prev-positions)
-        walk-tree (try-advance-root original not-wall
+        (score-bean-teritories surrounded)
+        prev-pos (score-prev-pos-existance surrounded pacman-prev-positions)
+        walk-tree (try-advance-root surrounded not-wall
                                     (last pacman-prev-positions)
                                     16)
         walk-scoring (score-four-directions-walk-tree
-                       original walk-tree walking-tree-scoring)
+                       surrounded walk-tree walking-tree-scoring)
         final-vec (apply mapv + [dvec imbean wvec gvec
                                  bvec prev-pos walk-scoring])
         ]
