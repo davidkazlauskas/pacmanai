@@ -133,16 +133,6 @@
 (defn total-nodes [original]
   (* (count original) (count (first original))))
 
-; Y X playerio pozicija
-
-; TODO: kaip skaiciuoti beans?
-;(defn bean-score [original divisor]
-  ;(bigdec
-   ;(/
-    ;(Math/round
-      ;(* 1000 (/ (float (count (bean-pos original)))
-        ;divisor)))
-    ;1000)))
 (defn bean-score [original divisor]
   (/ (float (count (bean-pos original))) divisor))
 
@@ -379,6 +369,56 @@
    :repr (apply str
             (map #(apply str (map node-to-char %))
               the-map))})
+
+(defn list-has-not [the-list elem]
+  (empty? (filter #(= % the-list) the-list)))
+
+(comment
+  {:coords [x y]
+   :leaves []
+   }
+  "the struct"
+{:limit 16
+ :chains []
+ }
+  
+  )
+
+(defn try-advance [original used-set
+                   path-valid [x y] iter limit]
+  (if (< iter limit)
+    (let [all (surround-coords x y)
+          filtered
+          (filterv some?
+            (map (fn [[cx cy]]
+                   (if-let [el (elem-or-nil original cx cy)]
+                     (if (and (path-valid el)
+                              (not (used-set [cx cy])))
+                             {:coords [cx cy]})))
+                 all))
+          new-set (into used-set (map :coords filtered))]
+      {:coords [x y]
+       :leaves (mapv
+                 #(try-advance original new-set
+                               path-valid
+                               (:coords %)
+                               (inc iter) limit)
+                 filtered)})
+   {:coords [x y]
+    :leaves []}))
+
+(defn try-advance-root [original path-valid
+                        coords limit]
+  (try-advance original #{coords} path-valid
+               coords 0 limit))
+
+(defn coords-2-vector-pos [[x1 y1] [x2 y2]]
+  (case [(- x2 x1) (- y2 y1)]
+    [-1 0] 0 ; left
+    [0 -1] 1 ; top
+    [1 0] 2 ; right
+    [0 1] 3 ; bottom
+    ))
 
 (defn map-after-pacman-move [the-data x-move y-move]
   (let [[px py] (first (pacman-pos the-data))]
