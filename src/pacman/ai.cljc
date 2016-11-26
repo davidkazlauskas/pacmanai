@@ -262,6 +262,15 @@
       (let [to-visit [(+ cx dx) (+ cy dy)]]
         (count (filter #(= % to-visit) pos-stack))))))
 
+(defn surround-coords [x y]
+  [
+   [(dec x) y]
+   [x (dec y)]
+   [(inc x) y]
+   [x (inc y)]
+   ]
+  )
+
 (defn try-advance [original used-set
                    path-valid [x y] iter limit]
   (if (< iter limit)
@@ -403,15 +412,6 @@
                        :else i)
                      {:type :space})) %)
     api-coords))
-
-(defn surround-coords [x y]
-  [
-   [(dec x) y]
-   [x (dec y)]
-   [(inc x) y]
-   [x (inc y)]
-   ]
-  )
 
 (defn moves-for-turn [original step [x y]]
   (let [moves 
