@@ -412,6 +412,27 @@
   (try-advance original #{coords} path-valid
                coords 0 limit))
 
+(defn score-walk-tree [original
+                       walk-tree
+                       current-res
+                       current-iter
+                       scoring-function]
+  (let [[x y] (:coords walk-tree)]
+   (if-let [elem (elem-or-nil original x y)]
+           (+ current-res
+              (scoring-function current-iter elem)
+              (reduce +
+                      (map
+                        #(score-walk-tree
+                           original
+                           % 0 (inc current-iter)
+                           scoring-function)
+                        (:leaves walk-tree))))
+           current-res)))
+
+(defn score-walk-tree-root [original walk-tree scoring-function]
+  (score-walk-tree original walk-tree 0 0 scoring-function))
+
 (defn coords-2-vector-pos [[x1 y1] [x2 y2]]
   (case [(- x2 x1) (- y2 y1)]
     [-1 0] 0 ; left
@@ -419,6 +440,29 @@
     [1 0] 2 ; right
     [0 1] 3 ; bottom
     ))
+
+(defn score-four-directions-walk-tree
+  [original walk-tree scoring-function]
+  (let [orig-coords (:coords walk-tree)
+        leaves-with-pos (map
+                          #(vector
+                             (coords-2-vector-pos
+                               orig-coords
+                               (:coords %))
+                             %)
+                          (:leaves walk-tree))
+        prelim [0 0 0 0]]
+    (loop [all leaves-with-pos our-vec prelim]
+      (if (seq all)
+        (let [[pos tree] (first all)
+              cont (next all)]
+          (recur
+            cont
+            (assoc our-vec
+                   pos
+                   (score-walk-tree-root
+                     original tree scoring-function))))
+        our-vec))))
 
 (defn map-after-pacman-move [the-data x-move y-move]
   (let [[px py] (first (pacman-pos the-data))]
