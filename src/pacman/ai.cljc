@@ -382,15 +382,11 @@
 ; TODO: add creep data
 (defn score-turn-for-pacman [original pacman-prev-positions]
   (let [surrounded (surround-map-sides-with-walls original)
-        [danger-left danger-top danger-right danger-bot :as dvec]
-        (score-immediate-danger surrounded)
+        dvec (score-immediate-danger surrounded)
         imbean (score-immediate-bean surrounded)
-        [wall-left wall-top wall-right wall-bot :as wvec]
-        (score-wall surrounded)
-        [ghosts-left ghosts-top ghosts-right ghosts-bot :as gvec]
-        (score-ghost-teritories surrounded)
-        [beans-left beans-top beans-right beans-bot :as bvec]
-        (score-bean-teritories surrounded)
+        wvec (score-wall surrounded)
+        gvec (score-ghost-teritories surrounded)
+        bvec (score-bean-teritories surrounded)
         prev-pos (score-prev-pos-existance surrounded pacman-prev-positions)
         walk-tree (try-advance-root surrounded not-wall
                                     (last pacman-prev-positions)
@@ -489,12 +485,8 @@
             (map #(apply str (map node-to-char %))
               the-map))})
 
-(defn map-after-pacman-move [the-data x-move y-move]
-  (let [[px py] (first (pacman-pos the-data))]
-    (-> the-data
-      (assoc-in [py px] {:type :space})
-      (assoc-in [(+ py y-move)
-                 (+ px x-move)] {:type :pacman}))))
+(defn map-after-pacman-move [the-data xpos ypos]
+  (replace-node the-data xpos ypos {:type :space}))
 
 (defn external-advice-turn [api-map]
   (println api-map)
