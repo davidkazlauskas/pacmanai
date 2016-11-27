@@ -71,7 +71,7 @@
         (assoc :topaint painted)
         )))
 
-(def map-repr (atom {:width 19 :repr a/sample-map}))
+(def map-repr (atom (get-pos-from-data {:width 19 :repr a/sample-map})))
 (def move-stack (atom []))
 (def auto-next (atom false))
 
@@ -162,10 +162,10 @@
 (defn reset-all []
   (prep-pac-table-reset)
   (reset! map-repr
-    {:width 19 :repr a/sample-map})
+    (get-pos-from-data
+      {:width 19 :repr a/sample-map}))
   (render-map-repr)
-  (hook-all-buttons)
-  )
+  (hook-all-buttons))
 
 (set! (.-onload js/window) reset-all)
 
