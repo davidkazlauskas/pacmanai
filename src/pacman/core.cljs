@@ -42,6 +42,35 @@
   (set! (.-className (.getElementById js/document (cell-id x y)))
         the-class))
 
+(defn paint-pacman-and-ghost-on-model [the-data [px py] ghost-pos]
+  (loop [post-pac
+         (a/replace-node the-data
+            px py {:type :pacman})
+         rem-ghost ghost-pos]
+    (if (seq? rem-ghost)
+      (let [[gx gy] (first rem-ghost)]
+        (recur
+          (a/replace-node the-data gx gy {:type :ghost})
+          (rest rem-ghost)))
+      post-pac)))
+
+(defn get-pos-from-data [the-data]
+  (let [the-map (a/str-map-2-data (:repr the-data)
+                                  (:width the-data))
+        pac-pos (or (:pacpos the-data)
+                    (first (a/pacman-pos the-map)))
+        ghost-pos (or (:ghostpos the-data)
+                      (into [] (a/ghost-pos the-map)))
+        repl-repr (clojure.string/replace (:repr the-data) #"[pg]" " ")
+        painted (paint-pacman-and-ghost-on-model
+                  the-map pac-pos ghost-pos)]
+    (-> the-data
+        (assoc :pacpos pac-pos)
+        (assoc :ghostpos ghost-pos)
+        (assoc :repr repl-repr)
+        (assoc :topaint painted)
+        )))
+
 (def map-repr (atom {:width 19 :repr a/sample-map}))
 (def move-stack (atom []))
 (def auto-next (atom false))
