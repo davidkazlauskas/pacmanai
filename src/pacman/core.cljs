@@ -35,21 +35,40 @@
    } el-type))
 
 (defn set-cell-for-type [el-type x y]
-  (set! (.-className (.getElementById js/document (cell-id x y))) (css-class-for-type el-type)))
+  (set! (.-className (.getElementById js/document (cell-id x y)))
+        (css-class-for-type el-type)))
+
+(defn set-class-for-cell [the-class x y]
+  (set! (.-className (.getElementById js/document (cell-id x y)))
+        the-class))
 
 (def map-repr (atom {:width 19 :repr a/sample-map}))
 (def move-stack (atom []))
 (def auto-next (atom false))
 
-(defn render-pacman-table [the-str width]
-  (let [dat (a/str-map-2-data the-str width)]
+(defn pacman-class-by-direction [prev-stack]
+  (let [[prev curr] (take-last 2 prev-stack)]
+    (if (and prev curr)
+      (nth ["pacman-left" "pacman-up" "pacman-right" "pacman-bot"]
+        (a/coords-2-vector-pos prev curr))
+      "pacman")))
+
+(defn render-pacman-table [the-str width prev-stack]
+  (let [dat (a/str-map-2-data the-str width)
+        pac-pos (first (a/pacman-pos dat))]
     (dorun
      (map-indexed
       (fn [y row]
         (dorun
           (map-indexed
             (fn [x elem]
-              (set-cell-for-type (:type elem) x y))
+              (if (not= (:type elem) :pacman)
+                (set-cell-for-type (:type elem) x y)
+                (set-class-for-cell
+                  (pacman-class-by-direction
+                    (conj prev-stack pac-pos))
+                  x y)
+                ))
             row)))
       dat))))
 
@@ -58,7 +77,9 @@
 
 (defn render-map-repr []
   (let [curr @map-repr]
-    (render-pacman-table (:repr curr) (:width curr))))
+    (render-pacman-table (:repr curr)
+                         (:width curr)
+                         (:prevstack curr))))
 
 (defn hook-button [the-id the-fn]
   (set! (.-onclick (.getElementById js/document the-id))

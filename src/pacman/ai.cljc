@@ -360,7 +360,7 @@
 
 (defn walking-tree-scoring [distance the-node]
   (let [the-type (:type the-node)
-        dist-norm (/ 1 distance)]
+        dist-norm (float (/ 1 (inc distance)))]
     (cond
       (= the-type :ghost)
       [(* @WALK-GHOST-SCORE dist-norm) false]
