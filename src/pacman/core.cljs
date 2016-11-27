@@ -47,10 +47,10 @@
          (a/replace-node the-data
             px py {:type :pacman})
          rem-ghost ghost-pos]
-    (if (seq? rem-ghost)
+    (if (seq rem-ghost)
       (let [[gx gy] (first rem-ghost)]
         (recur
-          (a/replace-node the-data gx gy {:type :ghost})
+          (a/replace-node post-pac gx gy {:type :ghost})
           (rest rem-ghost)))
       post-pac)))
 
@@ -82,9 +82,8 @@
         (a/coords-2-vector-pos prev curr))
       "pacman")))
 
-(defn render-pacman-table [the-str width prev-stack]
-  (let [dat (a/str-map-2-data the-str width)
-        pac-pos (first (a/pacman-pos dat))]
+(defn render-pacman-table [dat width prev-stack]
+  (let [pac-pos (first (a/pacman-pos dat))]
     (dorun
      (map-indexed
       (fn [y row]
@@ -106,7 +105,7 @@
 
 (defn render-map-repr []
   (let [curr @map-repr]
-    (render-pacman-table (:repr curr)
+    (render-pacman-table (:topaint curr)
                          (:width curr)
                          (:prevstack curr))))
 
@@ -124,15 +123,26 @@
   (let [curr @map-repr
         the-data (a/str-map-2-data (:repr curr) (:width curr))
         prev-stack (or (:prevstack curr) [])
-        my-pos (first (a/pacman-pos the-data))
-        scores (a/score-turn-for-pacman the-data prev-stack)
+        my-pos (:pacpos curr)
+        [cx cy] my-pos
+        ghost-pos (:ghostpos curr)
+        painted-repr (paint-pacman-and-ghost-on-model the-data my-pos ghost-pos)
+        scores (a/score-turn-for-pacman painted-repr prev-stack)
         best-score-pos (first (apply max-key second (map-indexed vector scores)))
-        [bx by] (nth [[-1 0] [0 -1] [1 0] [0 1]] best-score-pos)]
+        [bx by] (nth [[-1 0] [0 -1] [1 0] [0 1]] best-score-pos)
+        npos [(+ cx bx) (+ cy by)]
+        [nx ny] npos
+        after-move (a/map-after-pacman-move the-data nx ny)
+        post-move-paint (paint-pacman-and-ghost-on-model after-move npos ghost-pos)
+        ]
     (swap! move-stack conj curr)
     (reset! map-repr
       (assoc
-        (a/map-2-str (a/map-after-pacman-move the-data bx by))
-        :prevstack (conj-trim prev-stack my-pos 16))) ; 8 for second iteration
+        (a/map-2-str after-move)
+        :prevstack (conj-trim prev-stack my-pos 16)
+        :pacpos npos
+        :ghostpos ghost-pos
+        :topaint post-move-paint)) ; 8 for second iteration
     (println "chosen move:" [bx by])
     (render-map-repr)))
 
