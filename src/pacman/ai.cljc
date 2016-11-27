@@ -143,6 +143,9 @@
   (if-let [yel (get original y)]
     (get yel x)))
 
+(defn replace-node [original x y nv]
+  (assoc-in original [y x] nv))
+
 (defn is-something-next-to-something
   [condition original [inpx inpy] [delx dely]]
   (let [inp (elem-or-nil original (or inpx 0) (or inpy 0))
