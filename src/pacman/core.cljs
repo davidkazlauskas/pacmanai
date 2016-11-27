@@ -96,13 +96,33 @@
   (js/setInterval #(if @auto-next (next-pacman-turn))
                   200))
 
-(defn on-js-reload []
+(defn prep-pac-table-reset []
   (set! (.-innerHTML (.getElementById js/document "viz"))
-        (prep-pac-table 19 21))
-  (render-map-repr)
+        (prep-pac-table 19 21)))
+
+(declare reset-all)
+
+(defn hook-all-buttons []
   (hook-button "next" next-pacman-turn)
   (hook-button "prev" pop-pacman-turn)
   (hook-button "auto" #(swap! auto-next not))
+  (hook-button "reset" reset-all)
+  )
+
+(defn reset-all []
+  (prep-pac-table-reset)
+  (reset! map-repr
+    {:width 19 :repr a/sample-map})
+  (render-map-repr)
+  (hook-all-buttons)
+  )
+
+(set! (.-onload js/window) reset-all)
+
+(defn on-js-reload []
+  (prep-pac-table-reset)
+  (render-map-repr)
+  (hook-all-buttons)
   
   ;; optionally touch your app-state to force rerendering depending on
   ;; your application
