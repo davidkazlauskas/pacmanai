@@ -2,16 +2,18 @@
 
 ; should dominate
 (def WEIGHT-WALL-NEXT (atom -1000))
-(def WEIGHT-GHOST-NEXT (atom -100))
+(def WEIGHT-GHOST-NEXT (atom -500))
+(def WEIGHT-PACMAN-NEXT (atom 500))
 ; prefer going to beans
-(def WEIGHT-BEAN-NEXT (atom 10))
-(def WEIGHT-GHOST-COUNT (atom -1))
-(def WEIGHT-BEAN-COUNT (atom 1))
+(def WEIGHT-BEAN-NEXT (atom 100))
+(def WEIGHT-GHOST-COUNT (atom -20))
+(def WEIGHT-BEAN-COUNT (atom 10))
 
-(def WEIGHT-POS-VISITED (atom -5))
+(def WEIGHT-POS-VISITED (atom -15))
 
-(def WALK-GHOST-SCORE (atom -25))
-(def WALK-BEAN-SCORE (atom 15))
+(def WALK-GHOST-SCORE (atom -100))
+(def WALK-PACMAN-SCORE (atom 400))
+(def WALK-BEAN-SCORE (atom 5))
 (def WALK-SPACE-SCORE (atom -1))
 
 (def WEIGHT-FOLLOWING-PREVIOUS (atom 15))
@@ -19,20 +21,20 @@
 (def atom-map
   {"wallnext" WEIGHT-WALL-NEXT
    "ghostnext" WEIGHT-GHOST-NEXT
+   "pacmannext" WEIGHT-PACMAN-NEXT
    "beannext" WEIGHT-BEAN-NEXT
    "ghostcount" WEIGHT-GHOST-COUNT
    "beancount" WEIGHT-BEAN-COUNT
    "posvisited" WEIGHT-POS-VISITED
    "walkghostscore" WALK-GHOST-SCORE
+   "walkpacmanscore" WALK-PACMAN-SCORE
    "walkbeanscore" WALK-BEAN-SCORE
    "walkspacescore" WALK-SPACE-SCORE})
 
 (defn get-val [the-name]
-  (println "GASTA" the-name)
   @(get atom-map the-name))
 
 (defn set-val [the-name nval]
-  (println "FASTA" the-name nval)
   (reset! (get atom-map the-name) nval))
 
 (def sample-map
@@ -188,25 +190,31 @@
 (def is-bean-next-to-pacman
   (partial is-something-next-to-something
            #(and
-              (= :pacman (:type %1))
+              true
               (= :bean (:type %2)))))
 
 (def is-ghost-next-to-pacman
   (partial is-something-next-to-something
            #(and
-              (= :pacman (:type %1))
+              true
               (= :ghost (:type %2)))))
+
+(def is-ghost-next-to-pacman-2
+  (partial is-something-next-to-something
+           #(and
+              true
+              (= :pacman (:type %2)))))
 
 (def is-wall-next-to-pacman
   (partial is-something-next-to-something
            #(and
-              (= :pacman (:type %1))
+              true
               (= :wall (:type %2)))))
 
 (def is-wall-next-to-ghost
   (partial is-something-next-to-something
            #(and
-              (= :ghost (:type %1))
+              true
               (= :wall (:type %2)))))
 
 (defn last-coords-for-orig [original]
@@ -216,7 +224,6 @@
   (if the-value 1.0 0.0))
 
 (defn round-and-weight-functions [original subj-pos weight bool-func]
-  (println "NNOO" bool-func)
   (mapv
     #(* weight
         (bool-2-num (bool-func original subj-pos %)))
@@ -232,6 +239,11 @@
 (defn score-immediate-danger [original subj-pos]
   (round-and-weight-functions
     original subj-pos @WEIGHT-GHOST-NEXT is-ghost-next-to-pacman))
+
+; score when ghost is immediately to pacman
+(defn score-immediate-pacman [original subj-pos]
+  (round-and-weight-functions
+    original subj-pos @WEIGHT-GHOST-NEXT is-ghost-next-to-pacman-2))
 
 ; score when ghost is immediately to pacman
 (defn score-immediate-bean [original subj-pos]
@@ -385,6 +397,8 @@
     (cond
       (= the-type :ghost)
       [(* @WALK-GHOST-SCORE dist-norm) false]
+      (= the-type :pacman)
+      [(* @WALK-PACMAN-SCORE dist-norm) false]
       (= the-type :bean)
       [(* @WALK-BEAN-SCORE dist-norm) true]
       (= the-type :space)
@@ -421,6 +435,7 @@
 (defn score-turn-for-subject [original coords pacman-prev-positions]
   (let [surrounded (surround-map-sides-with-walls original)
         dvec (score-immediate-danger surrounded coords)
+        pvec (score-immediate-pacman surrounded coords)
         imbean (score-immediate-bean surrounded coords)
         wvec (score-wall surrounded coords)
         gvec (score-ghost-teritories surrounded coords)
@@ -433,19 +448,20 @@
                        surrounded walk-tree walking-tree-scoring)
         dir-following (direction-following coords
                                            pacman-prev-positions)
-        final-vec (apply mapv + [dvec imbean wvec gvec
+        final-vec (apply mapv + [dvec pvec imbean wvec gvec
                                  bvec prev-pos walk-scoring
                                  dir-following])
         ]
-    (print-positional "GHOST NEXT:" dvec)
-    (print-positional "WALL NEXT:" wvec)
-    (print-positional "BEAN NEXT:" imbean)
-    (print-positional "GHOST TERRITORY:" gvec)
-    (print-positional "BEAN TERRITORY:" bvec)
-    (print-positional "PREV POS SCORE:" prev-pos)
-    (print-positional "WALK SCORE:" walk-scoring)
-    (print-positional "FOLLOWING PREV SCORE:" dir-following)
-    (print-positional "FINAL SCORE: " final-vec)
+    ;(print-positional "GHOST NEXT:" dvec)
+    ;(print-positional "PACMAN NEXT:" pvec)
+    ;(print-positional "WALL NEXT:" wvec)
+    ;(print-positional "BEAN NEXT:" imbean)
+    ;(print-positional "GHOST TERRITORY:" gvec)
+    ;(print-positional "BEAN TERRITORY:" bvec)
+    ;(print-positional "PREV POS SCORE:" prev-pos)
+    ;(print-positional "WALK SCORE:" walk-scoring)
+    ;(print-positional "FOLLOWING PREV SCORE:" dir-following)
+    ;(print-positional "FINAL SCORE: " final-vec)
     final-vec
     ))
 
