@@ -327,13 +327,17 @@
 (defn score-walk-tree-root [original walk-tree scoring-function]
   (score-walk-tree original walk-tree 0 0 scoring-function))
 
-(defn coords-2-vector-pos [[x1 y1] [x2 y2]]
-  (case [(- x2 x1) (- y2 y1)]
+(defn vec-2-vector-pos [the-vec]
+  (case the-vec
     [-1 0] 0 ; left
     [0 -1] 1 ; top
     [1 0] 2 ; right
     [0 1] 3 ; bottom
-    ))
+    )
+  )
+
+(defn coords-2-vector-pos [[x1 y1] [x2 y2]]
+  (vec-2-vector-pos [(- x2 x1) (- y2 y1)]))
 
 (defn score-four-directions-walk-tree
   [original walk-tree scoring-function]
@@ -369,6 +373,8 @@
       [(* @WALK-GHOST-SCORE dist-norm) false]
       (= the-type :bean)
       [(* @WALK-BEAN-SCORE dist-norm) true]
+      (= the-type :space)
+      [(* @WALK-SPACE-SCORE dist-norm) true]
       :else [0 true])))
 
 (defn surround-map-sides-with-walls [original]
@@ -378,6 +384,33 @@
           (assoc 0 {:type :wall})
           (assoc (dec (count row)) {:type :wall})))
     original))
+
+(defn is-direction-following-previous-vector [the-dir pacman-prev-positions]
+  (let [l2 (take-last 2 pacman-prev-positions)]
+    (if (not= (count l2) 2)
+      0
+      (let [[av bv] l2]
+        (if (= (coords-2-vector-pos av bv) (vec-2-vector-pos the-dir))
+          1
+          0)))))
+
+(defn all-directions []
+  [
+   [-1 0]
+   [0 -1]
+   [1 0]
+   [0 1]
+   ]
+  )
+
+(defn direction-following [pacman-curr pacman-prev-positions]
+  (let [wcurr (conj pacman-prev-positions pacman-curr)]
+    (mapv
+    #(*
+      @WEIGHT-FOLLOWING-PREVIOUS
+      (is-direction-following-previous-vector
+        % wcurr))
+    (all-directions))))
 
 ; TODO: add creep data
 (defn score-turn-for-pacman [original pacman-prev-positions]
@@ -393,8 +426,11 @@
                                     16)
         walk-scoring (score-four-directions-walk-tree
                        surrounded walk-tree walking-tree-scoring)
+        dir-following (direction-following (first (pacman-pos original))
+                                           pacman-prev-positions)
         final-vec (apply mapv + [dvec imbean wvec gvec
-                                 bvec prev-pos walk-scoring])
+                                 bvec prev-pos walk-scoring
+                                 dir-following])
         ]
     (print-positional "GHOST NEXT:" dvec)
     (print-positional "WALL NEXT:" wvec)
@@ -403,6 +439,7 @@
     (print-positional "BEAN TERRITORY:" bvec)
     (print-positional "PREV POS SCORE:" prev-pos)
     (print-positional "WALK SCORE:" walk-scoring)
+    (print-positional "FOLLOWING PREV SCORE:" dir-following)
     (print-positional "FINAL SCORE: " final-vec)
     final-vec
     ))
