@@ -207,23 +207,26 @@
     (reset! map-repr head)
     (render-map-repr)))
 
+(defn score-to-coords [[cx cy] scores]
+  (let [[dx dy]
+        (nth [[-1 0] [0 -1] [1 0] [0 1]]
+          (first (apply max-key second
+            (map-indexed vector scores))))]
+    [[(+ cx dx) (+ cy dy)] [dx dy]]))
+
 (defn next-pacman-turn []
   (set-dimension-values "pacman")
   (let [curr @map-repr
         the-data (a/str-map-2-data (:repr curr) (:width curr))
         prev-stack (or (:prevstack curr) [])
         my-pos (:pacpos curr)
-        [cx cy] my-pos
         ghost-pos (:ghostpos curr)
         painted-repr (paint-pacman-and-ghost-on-model the-data my-pos ghost-pos)
         scores (a/score-turn-for-pacman painted-repr prev-stack)
-        best-score-pos (first (apply max-key second (map-indexed vector scores)))
-        [bx by] (nth [[-1 0] [0 -1] [1 0] [0 1]] best-score-pos)
-        npos [(+ cx bx) (+ cy by)]
+        [npos ndelt] (score-to-coords my-pos scores)
         [nx ny] npos
         after-move (a/map-after-pacman-move the-data nx ny)
-        post-move-paint (paint-pacman-and-ghost-on-model after-move npos ghost-pos)
-        ]
+        post-move-paint (paint-pacman-and-ghost-on-model after-move npos ghost-pos)]
     (swap! move-stack conj curr)
     (reset! map-repr
       (assoc
@@ -232,9 +235,8 @@
         :pacpos npos
         :ghostpos ghost-pos
         :topaint post-move-paint)) ; 8 for second iteration
-    (println "chosen move:" [bx by])
+    (println "chosen move:" ndelt)
     (render-map-repr)))
-
 
 (defonce autoupd
   (js/setInterval #(if @auto-next (next-pacman-turn))
