@@ -12,6 +12,28 @@
 
 (def WALK-GHOST-SCORE (atom -25))
 (def WALK-BEAN-SCORE (atom 15))
+(def WALK-SPACE-SCORE (atom -1))
+
+(def WEIGHT-FOLLOWING-PREVIOUS (atom 15))
+
+(def atom-map
+  {"wallnext" WEIGHT-WALL-NEXT
+   "ghostnext" WEIGHT-GHOST-NEXT
+   "beannext" WEIGHT-BEAN-NEXT
+   "ghostcount" WEIGHT-GHOST-COUNT
+   "beancount" WEIGHT-BEAN-COUNT
+   "posvisited" WEIGHT-POS-VISITED
+   "walkghostscore" WALK-GHOST-SCORE
+   "walkbeanscore" WALK-BEAN-SCORE
+   "walkspacescore" WALK-SPACE-SCORE})
+
+(defn get-val [the-name]
+  (println "GASTA" the-name)
+  @(get atom-map the-name))
+
+(defn set-val [the-name nval]
+  (println "FASTA" the-name nval)
+  (reset! (get atom-map the-name) nval))
 
 (def sample-map
   (str
