@@ -100,6 +100,15 @@
        (partition mapwidth)
        (mapv #(mapv letter-to-node %))))
 
+(defn all-directions []
+  [
+   [-1 0]
+   [0 -1]
+   [1 0]
+   [0 1]
+   ]
+  )
+
 (defn generic-find-pos [filterfunc full-map-vec]
   (let [the-res (atom [])]
     (doall
@@ -206,36 +215,18 @@
 (defn bool-2-num [the-value]
   (if the-value 1.0 0.0))
 
-
-(defn round-and-weight-functions [original weight bool-func]
-  (let [pac-pos (first (pacman-pos original))]
-    [
-     (* weight
-      (bool-2-num
-       (bool-func original pac-pos [-1 0])))
-     (* weight
-      (bool-2-num
-       (bool-func original pac-pos [0 -1])))
-     (* weight
-      (bool-2-num
-       (bool-func original pac-pos [1 0])))
-     (* weight
-      (bool-2-num
-       (bool-func original pac-pos [0 1])))
-     ]))
+(defn round-and-weight-functions [original subj-pos weight bool-func]
+  (println "NNOO" bool-func)
+  (mapv
+    #(* weight
+        (bool-2-num (bool-func original subj-pos %)))
+    (all-directions)))
 
 (defn round-and-weight-function-gradient [original subj-pos weight grad-func]
-  (let []
-    [
-     (* weight
-      (grad-func original subj-pos [-1 0]))
-     (* weight
-      (grad-func original subj-pos [0 -1]))
-     (* weight
-      (grad-func original subj-pos [1 0]))
-     (* weight
-      (grad-func original subj-pos [0 1]))
-     ]))
+  (mapv
+    #(* weight
+        (grad-func original subj-pos %))
+    (all-directions)))
 
 ; score when ghost is immediately to pacman
 (defn score-immediate-danger [original subj-pos]
@@ -416,15 +407,6 @@
         (if (= (coords-2-vector-pos av bv) (vec-2-vector-pos the-dir))
           1
           0)))))
-
-(defn all-directions []
-  [
-   [-1 0]
-   [0 -1]
-   [1 0]
-   [0 1]
-   ]
-  )
 
 (defn direction-following [pacman-curr pacman-prev-positions]
   (let [wcurr (conj pacman-prev-positions pacman-curr)]
