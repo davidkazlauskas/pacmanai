@@ -125,6 +125,8 @@
    :description "Is actor next to the wall"}
   {:symbol "ghostnext"
    :description "Is actor next to the ghost"}
+  {:symbol "pacmannext"
+   :description "Is actor next to the pacman"}
   {:symbol "beannext"
    :description "Is actor next to the bean"}
   {:symbol "ghostcount"
@@ -135,6 +137,8 @@
    :description "Was position last visited"}
   {:symbol "walkghostscore"
    :description "Weight for ghosts found in following paths"}
+  {:symbol "walkpacmanscore"
+   :description "Weight for pacman found in following paths"}
   {:symbol "walkbeanscore"
    :description "Weight for beans found in following paths"}
   {:symbol "walkspacescore"
@@ -159,6 +163,38 @@
 
 (defn get-dim-val [dim the-symb]
   (deref (get-in atom-cache [dim the-symb])))
+
+(defn apply-weight-map [dim the-map]
+  (doseq [[k v] the-map]
+    (set-dim-val dim k v)))
+
+(apply-weight-map
+  "pacman"
+  {"wallnext" -1000
+   "ghostnext" -500
+   "pacmannext" 0
+   "beannext" 100
+   "ghostcount" -20
+   "beancount" 10
+   "posvisited" -15
+   "walkghostscore" -300
+   "walkpacmanscore" 0
+   "walkbeanscore" 5
+   "walkspacescore" -1})
+
+(apply-weight-map
+  "ghosts"
+  {"wallnext" -1000
+   "ghostnext" -100
+   "pacmannext" 1000
+   "beannext" 0
+   "ghostcount" -20
+   "beancount" 0
+   "posvisited" 0
+   "walkghostscore" -100
+   "walkpacmanscore" 300
+   "walkbeanscore" 5
+   "walkspacescore" 0})
 
 (defn get-float-val-by-id [the-id]
   (js/parseInt (.-value (.getElementById js/document the-id))))
@@ -194,7 +230,7 @@
                    [:td
                     [:input {:id (weight-id dim (:symbol weight))
                              :type "text"
-                             :value (a/get-val (:symbol weight))}]
+                             :value (get-dim-val dim (:symbol weight))}]
                     ]
                    ) (dimensions))
             ])
@@ -251,7 +287,7 @@
 (declare reset-all)
 
 (defn hook-all-buttons []
-  (hook-button "next" next-pacman-turn)
+  (hook-button "next" game-advance)
   (hook-button "prev" pop-pacman-turn)
   (hook-button "auto" #(swap! auto-next not))
   (hook-button "reset" reset-all)
@@ -259,6 +295,7 @@
   )
 
 (defn reset-all []
+  (reset! game-continuation (n-game-continuation))
   (prep-pac-table-reset)
   (reset! map-repr
     (get-pos-from-data
