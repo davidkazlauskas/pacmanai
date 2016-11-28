@@ -455,6 +455,12 @@
     (first (pacman-pos original))
     pacman-prev-positions))
 
+(defn score-turn-ghosts [original ghost-positions]
+  (mapv
+    #(score-turn-for-subject
+       original % [])
+    ghost-positions))
+
 (defn turn-api-coords-to-accepted [api-coords]
   (mapv
     #(mapv (fn [i] (if i
