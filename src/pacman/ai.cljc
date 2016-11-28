@@ -418,21 +418,20 @@
     (all-directions))))
 
 ; TODO: add creep data
-(defn score-turn-for-pacman [original pacman-prev-positions]
+(defn score-turn-for-subject [original coords pacman-prev-positions]
   (let [surrounded (surround-map-sides-with-walls original)
-        dvec (score-immediate-danger surrounded pac-pos)
-        pac-pos (first (pacman-pos surrounded))
-        imbean (score-immediate-bean surrounded pac-pos)
-        wvec (score-wall surrounded pac-pos)
-        gvec (score-ghost-teritories surrounded pac-pos)
-        bvec (score-bean-teritories surrounded pac-pos)
-        prev-pos (score-prev-pos-existance surrounded pac-pos pacman-prev-positions)
+        dvec (score-immediate-danger surrounded coords)
+        imbean (score-immediate-bean surrounded coords)
+        wvec (score-wall surrounded coords)
+        gvec (score-ghost-teritories surrounded coords)
+        bvec (score-bean-teritories surrounded coords)
+        prev-pos (score-prev-pos-existance surrounded coords pacman-prev-positions)
         walk-tree (try-advance-root surrounded not-wall
-                                    pac-pos
+                                    coords
                                     16)
         walk-scoring (score-four-directions-walk-tree
                        surrounded walk-tree walking-tree-scoring)
-        dir-following (direction-following pac-pos
+        dir-following (direction-following coords
                                            pacman-prev-positions)
         final-vec (apply mapv + [dvec imbean wvec gvec
                                  bvec prev-pos walk-scoring
@@ -450,7 +449,11 @@
     final-vec
     ))
 
-; expand map on both sides
+(defn score-turn-for-pacman [original pacman-prev-positions]
+  (score-turn-for-subject
+    original
+    (first (pacman-pos original))
+    pacman-prev-positions))
 
 (defn turn-api-coords-to-accepted [api-coords]
   (mapv
