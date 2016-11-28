@@ -391,9 +391,12 @@
 (defn not-wall [node]
   (not= (:type node) :wall))
 
+(defn walk-reach [] 16)
+
 (defn walking-tree-scoring [distance the-node]
   (let [the-type (:type the-node)
-        dist-norm (float (/ 1 (inc distance)))]
+        dist-norm (float (/ (- (walk-reach) distance)
+                            (walk-reach)))]
     (cond
       (= the-type :ghost)
       [(* @WALK-GHOST-SCORE dist-norm) false]
@@ -443,7 +446,7 @@
         prev-pos (score-prev-pos-existance surrounded coords pacman-prev-positions)
         walk-tree (try-advance-root surrounded not-wall
                                     coords
-                                    16)
+                                    (walk-reach))
         walk-scoring (score-four-directions-walk-tree
                        surrounded walk-tree walking-tree-scoring)
         dir-following (direction-following coords
