@@ -244,11 +244,12 @@
     (render-map-repr)))
 
 (defn score-to-coords [[cx cy] scores]
-  (let [[dx dy]
-        (nth [[-1 0] [0 -1] [1 0] [0 1]]
-          (first (apply max-key second
-            (map-indexed vector scores))))]
-    [[(+ cx dx) (+ cy dy)] [dx dy]]))
+  (let [all-vals
+        (take 2 (sort-by second > (map-indexed vector scores)))
+        choose-vec [[-1 0] [0 -1] [1 0] [0 1]]
+        [dx dy]
+        (nth choose-vec (first (first all-vals)))]
+    [[(+ cx dx) (+ cy dy)] [dx dy] [cx cy]]))
 
 (defn next-pacman-turn []
   (set-dimension-values "pacman")
@@ -274,8 +275,64 @@
     (println "chosen move:" ndelt)
     (render-map-repr)))
 
+(defn ghosts-separate-if-needed [ncoords]
+  (println "spike" ncoords)
+  (loop [the-coords []
+         the-set #{}
+         the-rem ncoords]
+    (if (seq the-rem)
+      (let [f (first the-rem)
+            wcur (conj the-set (first f))
+            rst (rest the-rem)]
+        (if (the-set (first f))
+          (recur (conj the-coords (last f)) wcur rst)
+          (recur (conj the-coords (first f)) wcur rst)))
+      the-coords)))
+
+(defn next-ghost-turn []
+  (set-dimension-values "ghosts")
+  (let [curr @map-repr
+        the-data (a/str-map-2-data (:repr curr) (:width curr))
+        prev-stack (or (:prevstack curr) [])
+        my-pos (:pacpos curr)
+        ghost-pos (:ghostpos curr)
+        painted-repr (paint-pacman-and-ghost-on-model the-data my-pos ghost-pos)
+        scores (a/score-turn-ghosts painted-repr ghost-pos)
+        the-turns (mapv #(score-to-coords %1 %2) ghost-pos scores)
+        nghost-pos (ghosts-separate-if-needed the-turns)
+        nghost-delt (mapv second the-turns)
+        post-move-paint (paint-pacman-and-ghost-on-model the-data my-pos nghost-pos)]
+    (swap! move-stack conj curr)
+    (reset! map-repr
+      (assoc
+        (a/map-2-str the-data)
+        :prevstack prev-stack
+        :pacpos my-pos
+        :ghostpos nghost-pos
+        :topaint post-move-paint)) ; 8 for second iteration
+    (println "chosen moves:" nghost-delt)
+    (render-map-repr)))
+
+(defn n-game-continuation []
+  (cycle [next-pacman-turn next-ghost-turn]))
+
+(def game-continuation (atom (n-game-continuation)))
+
+(defn is-game-over []
+  (let [cgame @map-repr]
+    (contains? (into #{} (:ghostpos cgame)) (:pacpos cgame))))
+
+(defn game-advance []
+  (swap! game-continuation
+         (fn [curr]
+           (if-not (is-game-over)
+             (do
+               ((first curr))
+               (rest curr))
+             curr))))
+
 (defonce autoupd
-  (js/setInterval #(if @auto-next (next-pacman-turn))
+  (js/setInterval #(if @auto-next (game-advance))
                   200))
 
 (defn prep-pac-table-reset []
