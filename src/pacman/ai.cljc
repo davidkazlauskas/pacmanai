@@ -224,38 +224,37 @@
        (bool-func original pac-pos [0 1])))
      ]))
 
-(defn round-and-weight-function-gradient [original weight grad-func]
-  (let [pac-pos (first (pacman-pos original))]
+(defn round-and-weight-function-gradient [original subj-pos weight grad-func]
+  (let []
     [
      (* weight
-      (grad-func original pac-pos [-1 0]))
+      (grad-func original subj-pos [-1 0]))
      (* weight
-      (grad-func original pac-pos [0 -1]))
+      (grad-func original subj-pos [0 -1]))
      (* weight
-      (grad-func original pac-pos [1 0]))
+      (grad-func original subj-pos [1 0]))
      (* weight
-      (grad-func original pac-pos [0 1]))
+      (grad-func original subj-pos [0 1]))
      ]))
 
 ; score when ghost is immediately to pacman
-(defn score-immediate-danger [original]
+(defn score-immediate-danger [original subj-pos]
   (round-and-weight-functions
-    original @WEIGHT-GHOST-NEXT is-ghost-next-to-pacman))
+    original subj-pos @WEIGHT-GHOST-NEXT is-ghost-next-to-pacman))
 
 ; score when ghost is immediately to pacman
-(defn score-immediate-bean [original]
+(defn score-immediate-bean [original subj-pos]
   (round-and-weight-functions
-    original @WEIGHT-BEAN-NEXT is-bean-next-to-pacman))
+    original subj-pos @WEIGHT-BEAN-NEXT is-bean-next-to-pacman))
 
 ; score when ghost is immediately to pacman
-(defn score-wall [original]
+(defn score-wall [original subj-pos]
   (round-and-weight-functions
-    original @WEIGHT-WALL-NEXT is-wall-next-to-pacman))
+    original subj-pos @WEIGHT-WALL-NEXT is-wall-next-to-pacman))
 
-(defn territory-score-func [original weight eval-func]
-  (let [pac-pos (first (pacman-pos original))
-        [left-part top-part right-part bot-part]
-        (parition-teritories pac-pos (last-coords-for-orig original))]
+(defn territory-score-func [original subj-pos weight eval-func]
+  (let [[left-part top-part right-part bot-part]
+        (parition-teritories subj-pos (last-coords-for-orig original))]
     (mapv #(* weight %)
      [(eval-func
        (sub-map original left-part))
@@ -266,13 +265,15 @@
       (eval-func
        (sub-map original bot-part))])))
 
-(defn score-ghost-teritories [original]
+(defn score-ghost-teritories [original subj-pos]
   (territory-score-func original
+                        subj-pos
                         @WEIGHT-GHOST-COUNT
                         evaluate-territory-ghost-score))
 
-(defn score-bean-teritories [original]
+(defn score-bean-teritories [original subj-pos]
   (territory-score-func original
+                        subj-pos
                         @WEIGHT-BEAN-COUNT
                         (fn [i]
                           (bean-score i (count original)))))
@@ -280,9 +281,9 @@
 (defn print-positional [pref [l t r b]]
   (println pref "left:" l "top:" t "right:" r "bot:" b))
 
-(defn score-prev-pos-existance [original pos-stack]
+(defn score-prev-pos-existance [original subj-pos pos-stack]
   (round-and-weight-function-gradient
-    original @WEIGHT-POS-VISITED
+    original subj-pos @WEIGHT-POS-VISITED
     (fn [_ [cx cy] [dx dy]]
       (let [to-visit [(+ cx dx) (+ cy dy)]]
         (count (filter #(= % to-visit) pos-stack))))))
@@ -437,18 +438,19 @@
 ; TODO: add creep data
 (defn score-turn-for-pacman [original pacman-prev-positions]
   (let [surrounded (surround-map-sides-with-walls original)
-        dvec (score-immediate-danger surrounded)
-        imbean (score-immediate-bean surrounded)
-        wvec (score-wall surrounded)
-        gvec (score-ghost-teritories surrounded)
-        bvec (score-bean-teritories surrounded)
-        prev-pos (score-prev-pos-existance surrounded pacman-prev-positions)
+        dvec (score-immediate-danger surrounded pac-pos)
+        pac-pos (first (pacman-pos surrounded))
+        imbean (score-immediate-bean surrounded pac-pos)
+        wvec (score-wall surrounded pac-pos)
+        gvec (score-ghost-teritories surrounded pac-pos)
+        bvec (score-bean-teritories surrounded pac-pos)
+        prev-pos (score-prev-pos-existance surrounded pac-pos pacman-prev-positions)
         walk-tree (try-advance-root surrounded not-wall
-                                    (last pacman-prev-positions)
+                                    pac-pos
                                     16)
         walk-scoring (score-four-directions-walk-tree
                        surrounded walk-tree walking-tree-scoring)
-        dir-following (direction-following (first (pacman-pos original))
+        dir-following (direction-following pac-pos
                                            pacman-prev-positions)
         final-vec (apply mapv + [dvec imbean wvec gvec
                                  bvec prev-pos walk-scoring
