@@ -119,7 +119,96 @@
       (subvec res (- (count res) lim))
       res)))
 
+(defn weights-symbols []
+  [
+  {:symbol "wallnext"
+   :description "Is actor next to the wall"}
+  {:symbol "ghostnext"
+   :description "Is actor next to the ghost"}
+  {:symbol "beannext"
+   :description "Is actor next to the bean"}
+  {:symbol "ghostcount"
+   :description "Ghost count in territory weight"}
+  {:symbol "beancount"
+   :description "Bean count in territory weight"}
+  {:symbol "posvisited"
+   :description "Was position last visited"}
+  {:symbol "walkghostscore"
+   :description "Weight for ghosts found in following paths"}
+  {:symbol "walkbeanscore"
+   :description "Weight for beans found in following paths"}
+  {:symbol "walkspacescore"
+   :description "Weight for space found in following paths"}
+  ])
+
+(defn dimensions []
+  ["pacman" "ghosts"])
+
+(def atom-cache
+  (into {}
+    (map #(vector %
+      (into {}
+      (map
+        (fn [i] (vector (:symbol i)
+                 (atom (a/get-val (:symbol i)))))
+        (weights-symbols)))
+      ) (dimensions))))
+
+(defn set-dim-val [dim the-symb the-val]
+  (reset! (get-in atom-cache [dim the-symb]) the-val))
+
+(defn get-dim-val [dim the-symb]
+  (deref (get-in atom-cache [dim the-symb])))
+
+(defn get-float-val-by-id [the-id]
+  (js/parseInt (.-value (.getElementById js/document the-id))))
+
+(defn weight-id [dimension symb]
+  (str
+    "weight-input-"
+    dimension "-"
+    (clojure.string/lower-case (str symb))))
+
+(defn set-dimension-values [the-dim]
+  (doseq [i (weights-symbols)]
+    (a/set-val (:symbol i)
+      (get-dim-val the-dim (:symbol i)))))
+
+(defn flush-inputs-to-cache []
+  (doseq [i (dimensions)
+          j (weights-symbols)]
+    (set-dim-val i (:symbol j)
+      (get-float-val-by-id (weight-id i (:symbol j))))))
+
+(defn generate-table []
+  (html
+    [:table
+     [:tr [:th "Description"] (map #(html [:th %])
+                                   (dimensions))]
+     (map
+       (fn [weight]
+         (html
+           [:tr
+            [:td (:description weight)]
+            (map (fn [dim]
+                   [:td
+                    [:input {:id (weight-id dim (:symbol weight))
+                             :type "text"
+                             :value (a/get-val (:symbol weight))}]
+                    ]
+                   ) (dimensions))
+            ])
+         )
+        (weights-symbols))]))
+
+(defn pop-pacman-turn []
+  (let [head (last @move-stack)]
+    (swap! move-stack pop)
+    (reset! map-repr head)
+    (render-map-repr)))
+
 (defn next-pacman-turn []
+  (set-dimension-values "pacman")
   (let [curr @map-repr
         the-data (a/str-map-2-data (:repr curr) (:width curr))
         prev-stack (or (:prevstack curr) [])
@@ -146,11 +235,6 @@
     (println "chosen move:" [bx by])
     (render-map-repr)))
 
-(defn pop-pacman-turn []
-  (let [head (last @move-stack)]
-    (swap! move-stack pop)
-    (reset! map-repr head)
-    (render-map-repr)))
 
 (defonce autoupd
   (js/setInterval #(if @auto-next (next-pacman-turn))
@@ -158,7 +242,9 @@
 
 (defn prep-pac-table-reset []
   (set! (.-innerHTML (.getElementById js/document "viz"))
-        (prep-pac-table 19 21)))
+        (prep-pac-table 19 21))
+  (set! (.-innerHTML (.getElementById js/document "weight-table"))
+        (generate-table)))
 
 (declare reset-all)
 
@@ -167,6 +253,7 @@
   (hook-button "prev" pop-pacman-turn)
   (hook-button "auto" #(swap! auto-next not))
   (hook-button "reset" reset-all)
+  (hook-button "update" flush-inputs-to-cache)
   )
 
 (defn reset-all []
