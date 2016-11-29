@@ -181,6 +181,11 @@
   (doseq [[k v] the-map]
     (set-dim-val dim k v)))
 
+; very first attempt:
+; beannext 10
+; ghostcount -1
+; beancount 1
+
 (apply-weight-map
   "pacman"
   {"wallnext" -1000
