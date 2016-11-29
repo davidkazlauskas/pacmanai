@@ -113,6 +113,19 @@
   (set! (.-onclick (.getElementById js/document the-id))
         the-fn))
 
+(defn hook-checkbox [the-id truefn falsefn]
+  (set! (.-onclick (.getElementById js/document the-id))
+        (fn []
+          (if (.-checked (.getElementById js/document the-id))
+            (truefn)
+            (falsefn))
+          nil)))
+
+(defn hook-checkbox-to-atom [the-id the-atom]
+  (hook-checkbox the-id
+                 #(reset! the-atom true)
+                 #(reset! the-atom false)))
+
 (defn conj-trim [the-vec elem lim]
   (let [res (conj the-vec elem)]
     (if (> (count res) lim)
@@ -313,8 +326,21 @@
     (println "chosen moves:" nghost-delt)
     (render-map-repr)))
 
+(defn wrap-func-on-atom-cond [the-fn the-atom the-key]
+  (fn
+    ([]
+    (let [res @the-atom]
+      (when res
+        (the-fn))
+      res))
+    ([_] the-key)))
+
+(def pacman-move (atom true))
+(def ghosts-move (atom true))
+
 (defn n-game-continuation []
-  (cycle [next-pacman-turn next-ghost-turn]))
+  (cycle [(wrap-func-on-atom-cond next-pacman-turn pacman-move :pac)
+          (wrap-func-on-atom-cond next-ghost-turn ghosts-move :ghost)]))
 
 (def game-continuation (atom (n-game-continuation)))
 
@@ -326,9 +352,14 @@
   (swap! game-continuation
          (fn [curr]
            (if-not (is-game-over)
-             (do
-               ((first curr))
-               (rest curr))
+             (loop [exec-set #{} next-iter curr]
+               (let [now (first next-iter)
+                     tail (rest next-iter)
+                     the-key (now 0)
+                     wkey (conj exec-set the-key)]
+                 (if (or (exec-set the-key) (now))
+                   tail
+                   (recur wkey tail))))
              curr))))
 
 (defonce autoupd
@@ -349,7 +380,8 @@
   (hook-button "auto" #(swap! auto-next not))
   (hook-button "reset" reset-all)
   (hook-button "update" flush-inputs-to-cache)
-  )
+  (hook-checkbox-to-atom "pacmoves" pacman-move)
+  (hook-checkbox-to-atom "ghostmoves" ghosts-move))
 
 (defn reset-all []
   (reset! game-continuation (n-game-continuation))
