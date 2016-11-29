@@ -403,7 +403,8 @@
       (= the-type :pacman)
       [(* @WALK-PACMAN-SCORE dist-norm) false]
       (= the-type :bean)
-      [(* @WALK-BEAN-SCORE dist-norm) true]
+      [(+ (* @WALK-SPACE-SCORE dist-norm)
+          (* @WALK-BEAN-SCORE dist-norm)) true]
       (= the-type :space)
       [(* @WALK-SPACE-SCORE dist-norm) true]
       :else [0 true])))

@@ -186,7 +186,7 @@
   {"wallnext" -1000
    "ghostnext" -500
    "pacmannext" 0
-   "beannext" 100
+   "beannext" 150
    "ghostcount" -20
    "beancount" 10
    "posvisited" -15
