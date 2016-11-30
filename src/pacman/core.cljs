@@ -186,6 +186,15 @@
 ; ghostcount -1
 ; beancount 1
 
+; scenario:
+; all play out default
+; step back 2 times
+; ghosts fear pacman -> -300
+; run
+; make pacman looser -> feat ghosts 0, 0 points for space, big weight for not repeating
+; make pacman chase ghosts
+; after that pacman glory death, ignore beans next, space 20, beansearch 0
+
 (apply-weight-map
   "pacman"
   {"wallnext" -1000
