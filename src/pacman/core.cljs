@@ -190,21 +190,21 @@
    "ghostcount" -20
    "beancount" 10
    "posvisited" -15
-   "walkghostscore" -300
+   "walkghostscore" -100
    "walkpacmanscore" 0
-   "walkbeanscore" 5
-   "walkspacescore" -1})
+   "walkbeanscore" 15
+   "walkspacescore" 5})
 
 (apply-weight-map
   "ghosts"
   {"wallnext" -1000
-   "ghostnext" -100
+   "ghostnext" -20
    "pacmannext" 1000
    "beannext" 0
    "ghostcount" -20
    "beancount" 0
    "posvisited" 0
-   "walkghostscore" -100
+   "walkghostscore" -20
    "walkpacmanscore" 300
    "walkbeanscore" 5
    "walkspacescore" 0})
